@@ -10,7 +10,7 @@ import time
 import os
 from tensorboardX import SummaryWriter
 class Linear_Net(nn.Module):
-    def __init__(self,in_dim=23,out_dim=1,hidden=100) :
+    def __init__(self,in_dim=14,out_dim=1,hidden=100) :
         super().__init__()
         self.body=nn.Sequential(
             nn.Linear(in_dim,hidden),
@@ -106,14 +106,23 @@ if __name__=='__main__':
     data = pd.read_csv(data_root, encoding="gbk")
     # for col in data.columns:
     #     print(col+' : '+ str(data[col].dtype))
+    # process_col=[ "square", "livingRoom", "drawingRoom", "kitchen", "bathRoom", "floor", "elevator", "subway", "district", "tradeYear"]
     data.drop(["url", "id", "price","constructionTime"],axis=1, inplace=True)
+    
+    process_col=["DOM", "followers", "square", "livingRoom", "drawingRoom", "kitchen", "bathRoom", "floor", "renovationCondition", "buildingStructure", "elevator", "subway", "district", "tradeyear"]
+    #data=data[process_col]
     data = data.sample(frac=1)
-    data=data.div(data.max())
+    #data=data.div(data.max())
 
-    x = data.copy()
-    x.drop(['totalPrice'],axis=1, inplace=True)
+    #x = data.copy()
+    x =data[process_col]
+    for nkey in process_col:
+        x[nkey]=x[nkey].div(x[nkey].max())
+    #x.drop(['totalPrice'],axis=1, inplace=True)
     
     y = data['totalPrice']
+    scale=y.max()
+    y=y.div(y.max())
     spilt_point=int(0.8*data.shape[0])
     x_train = x.iloc[0:spilt_point,:]
     x_test = x.iloc[spilt_point:,:]
@@ -129,7 +138,7 @@ if __name__=='__main__':
     optimizer = optimizer = optim.AdamW(model.parameters(), lr=2e-4, betas=(0.9, 0.999),weight_decay=0)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, epoch, eta_min=1e-6)
     criterion_rmse = Loss_RMSE()
-
+    iter_per_epoch=len(train_loader)
     test_loss_min=1e9
     for j in range(epoch):
         for i, (inps, labels) in enumerate(train_loader):
@@ -140,7 +149,7 @@ if __name__=='__main__':
             out=model(inps)
             loss=criterion_rmse(out,labels)
             losses.update(loss)
-            writer.add_scalar('loss/train', loss,j*epoch+i)
+            writer.add_scalar('loss/train', loss,j*iter_per_epoch+i)
             loss.backward()
             optimizer.step()
             lr = optimizer.param_groups[0]['lr']
